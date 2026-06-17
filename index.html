@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Financiero · USD</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f8f8f6;
+    --surface: #ffffff;
+    --surface2: #f2f1ee;
+    --border: rgba(0,0,0,.08);
+    --border-strong: rgba(0,0,0,.14);
+    --text: #1a1a18;
+    --text2: #6b6b67;
+    --text3: #9b9b97;
+    --green: #1D9E75;
+    --blue: #378ADD;
+    --purple: #534AB7;
+    --red: #D85A30;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5;
+    padding: 2rem;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    margin-bottom: 1.75rem; border-bottom: 1px solid var(--border-strong);
+    padding-bottom: 1.25rem; display: flex; justify-content: space-between;
+    align-items: flex-end; flex-wrap: wrap; gap: 1rem;
+  }
+  .header-left h1 { font-size: 22px; font-weight: 600; letter-spacing: -.3px; }
+  .header-left p { font-size: 13px; color: var(--text2); margin-top: 3px; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .live-status { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text2); }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .badge { background: var(--purple); color: #fff; font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 20px; }
+
+  /* ── PERIOD SELECTOR ── */
+  .period-bar {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 1.75rem;
+    flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 14px;
+  }
+  .period-label {
+    font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text3); margin-right: 4px;
+  }
+  .period-chip {
+    padding: 6px 13px; border-radius: 16px; border: 1px solid var(--border-strong);
+    background: var(--surface); color: var(--text2); font-size: 12.5px;
+    cursor: pointer; transition: all .15s; user-select: none;
+  }
+  .period-chip:hover { border-color: var(--blue); color: var(--text); }
+  .period-chip.active { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 500; }
+  .period-divider { width: 1px; height: 18px; background: var(--border-strong); margin: 0 4px; }
+  .mode-toggle { display: flex; gap: 2px; background: var(--surface2); border-radius: 8px; padding: 2px; margin-left: auto; }
+  .mode-btn { padding: 6px 12px; border-radius: 6px; font-size: 11.5px; color: var(--text2); cursor: pointer; transition: all .15s; }
+  .mode-btn.active { background: var(--text); color: #fff; font-weight: 500; }
+  .range-hint { font-size: 11px; color: var(--text3); width: 100%; margin-top: 2px; }
+
+  /* ── SECTIONS ── */
+  .section-label {
+    font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase;
+    letter-spacing: .1em; margin: 2rem 0 .75rem;
+  }
+  .section-label:first-of-type { margin-top: 0; }
+
+  /* ── KPI grid ── */
+  .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .kpi { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .kpi-label { font-size: 11px; color: var(--text2); margin-bottom: 8px; }
+  .kpi-val { font-size: 22px; font-weight: 600; color: var(--text); }
+  .kpi-sub { font-size: 11px; margin-top: 5px; color: var(--text2); }
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+
+  /* ── Charts ── */
+  .charts-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .charts-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 18px; }
+  .card-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 10px; }
+  .chart-wrap { position: relative; width: 100%; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; font-size: 11px; color: var(--text2); }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── Table ── */
+  .table-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 18px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { font-size: 10px; color: var(--text2); font-weight: 600; padding: 6px 10px; border-bottom: 1px solid var(--border-strong); text-align: right; white-space: nowrap; }
+  th:first-child { text-align: left; }
+  th.total-col { color: var(--text); border-left: 1px solid var(--border-strong); }
+  td { padding: 6px 10px; border-bottom: 0.5px solid var(--border); text-align: right; color: var(--text); white-space: nowrap; }
+  td:first-child { text-align: left; color: var(--text2); }
+  td.total-col { border-left: 1px solid var(--border-strong); font-weight: 600; }
+  tr.sub td { font-weight: 600; background: var(--surface2); }
+  tr.sub td:first-child { color: var(--text); }
+  tr.total td { font-weight: 700; border-top: 1.5px solid var(--border-strong); border-bottom: none; }
+  tr.total td:first-child { color: var(--text); }
+
+  #state-msg { text-align: center; padding: 100px 0; color: var(--text2); font-size: 14px; }
+  #state-msg.error { color: var(--red); }
+  #dashboard { display: none; }
+
+  .footer-meta {
+    margin-top: 2.5rem; padding-top: 1rem; border-top: 0.5px solid var(--border);
+    font-size: 11px; color: var(--text3); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px;
+  }
+
+  @media (max-width: 900px) {
+    body { padding: 1rem; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .charts-2, .charts-3 { grid-template-columns: 1fr; }
+    .header { flex-direction: column; gap: .5rem; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>Dashboard financiero</h1>
+    <p>Estado de resultados y posición financiera — USD</p>
+  </div>
+  <div class="header-right">
+    <div class="live-status"><div class="live-dot"></div><span id="last-update">Cargando…</span></div>
+    <div class="badge" id="period-badge">—</div>
+  </div>
+</div>
+
+<div id="state-msg">Conectando con Google Sheets…</div>
+
+<div id="dashboard">
+
+  <div class="period-bar" id="period-bar"></div>
+
+  <div class="section-label">Resumen ejecutivo</div>
+  <div class="kpi-grid" id="kpi-grid"></div>
+
+  <div class="section-label">Ventas, costo y resultado bruto</div>
+  <div class="card">
+    <div class="card-title" id="c1-title">Ingresos vs costo de ventas vs resultado bruto (USD)</div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--blue)"></span>Ventas netas</span>
+      <span><span class="dot" style="background:var(--red)"></span>Costo de ventas</span>
+      <span><span class="dot" style="background:var(--green)"></span>Resultado bruto</span>
+    </div>
+    <div class="chart-wrap" style="height:280px"><canvas id="c1"></canvas></div>
+  </div>
+
+  <div class="section-label">Márgenes y composición de egresos</div>
+  <div class="charts-2">
+    <div class="card">
+      <div class="card-title">Evolución de márgenes (% sobre ventas)</div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--green)"></span>Margen bruto</span>
+        <span><span class="dot" style="background:var(--purple)"></span>EBITDA</span>
+        <span><span class="dot" style="background:var(--blue)"></span>Resultado neto</span>
+      </div>
+      <div class="chart-wrap" style="height:240px"><canvas id="c2"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title" id="c3-title">Composición de egresos</div>
+      <div class="legend" id="c3-legend"></div>
+      <div class="chart-wrap" style="height:240px"><canvas id="c3"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section-label">Cascada de resultados</div>
+  <div class="card">
+    <div class="card-title" id="c6-title">Waterfall — de ventas a resultado neto</div>
+    <div class="chart-wrap" style="height:300px"><canvas id="c6"></canvas></div>
+  </div>
+
+  <div class="section-label">Estado de resultados detallado (USD)</div>
+  <div class="table-card">
+    <div class="table-scroll">
+      <table id="pl-table">
+        <thead id="pl-thead"></thead>
+        <tbody id="pl-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-label">Tendencia — ventas, EBITDA y resultado neto</div>
+  <div class="card">
+    <div class="card-title">Comparativa de los principales indicadores</div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--blue)"></span>Ventas</span>
+      <span><span class="dot" style="background:var(--purple)"></span>EBITDA</span>
+      <span><span class="dot" style="background:var(--green)"></span>Resultado neto</span>
+    </div>
+    <div class="chart-wrap" style="height:260px"><canvas id="c7"></canvas></div>
+  </div>
+
+  <div class="section-label">Posición financiera</div>
+  <div class="charts-2">
+    <div class="card">
+      <div class="card-title" id="c5-title">Evolución de caja total (USD)</div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--purple)"></span>Total caja</span>
+        <span><span class="dot" style="background:var(--red); height:3px; border-radius:0"></span>Variación mensual</span>
+      </div>
+      <div class="chart-wrap" style="height:240px"><canvas id="c5"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title" id="c10-title">Créditos vs deudas</div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--green)"></span>Créditos / activos</span>
+        <span><span class="dot" style="background:var(--red)"></span>Deudas</span>
+      </div>
+      <div class="chart-wrap" style="height:240px"><canvas id="c10"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section-label">Estado financiero patrimonial (USD)</div>
+  <div class="table-card">
+    <div class="table-scroll">
+      <table id="fin-table">
+        <thead id="fin-thead"></thead>
+        <tbody id="fin-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer-meta">
+    <span id="row-count"></span>
+    <span id="countdown-label">próx. actualización en <span id="countdown">30s</span></span>
+  </div>
+
+</div>
+
+<script src="dashboard.js"></script>
+</body>
+</html>
